@@ -1,7 +1,7 @@
 use std::fmt;
 use std::ops::{AddAssign, SubAssign};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, PartialOrd)]
 struct Bitcoin(isize);
 
 // A little surprised that this boilerplate code is needed and cannot be automatically derived
@@ -38,8 +38,12 @@ impl Wallet {
         self.balance += amount;
     }
 
-    fn withdraw(&mut self, amount: Bitcoin) {
+    fn withdraw(&mut self, amount: Bitcoin) -> Result<(), &str> {
+        if amount > self.balance {
+            return Err("Insufficient funds!");
+        }
         self.balance -= amount;
+        Ok(())
     }
 }
 
@@ -68,9 +72,16 @@ mod tests {
     }
 
     #[test]
-    fn test_wallet_withdrawal() {
+    fn test_wallet_withdrawal_sufficient_funds() {
         let mut wallet = wallet(20);
-        wallet.withdraw(Bitcoin(10));
+        assert!(wallet.withdraw(Bitcoin(10)).is_ok());
         assert_balance(wallet, Bitcoin(10));
+    }
+
+    #[test]
+    fn test_wallet_withdrawal_insufficient_funds() {
+        let mut wallet = wallet(20);
+        assert_eq!(wallet.withdraw(Bitcoin(25)), Err("Insufficient funds!"));
+        assert_balance(wallet, Bitcoin(20));
     }
 }
