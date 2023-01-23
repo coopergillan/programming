@@ -38,17 +38,41 @@ impl Wallet {
         self.balance += amount;
     }
 
-    fn withdraw(&mut self, amount: Bitcoin) -> Result<(), &str> {
-        if amount > self.balance {
-            return Err("Insufficient funds!");
+    fn withdraw(&mut self, amount: Bitcoin) -> Result<(), InsufficientFundsError> {
+        match amount > self.balance {
+            true => Err(InsufficientFundsError),
+            false => {
+                self.balance -= amount;
+                Ok(())
+            }
         }
-        self.balance -= amount;
-        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct InsufficientFundsError;
+
+impl fmt::Display for InsufficientFundsError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Insufficient funds!")
     }
 }
 
 fn main() {
-    println!("Hello, world!");
+    let mut wallet = Wallet::new(Bitcoin(25));
+    assert_eq!(&wallet.balance, &Bitcoin(25));
+    println!("Starting with {} in wallet", &wallet.balance);
+
+    wallet.deposit(Bitcoin(10));
+    assert_eq!(&wallet.balance, &Bitcoin(35));
+    println!("Now have {}", &wallet.balance);
+
+    let withdrawal_amount = Bitcoin(120);
+    match wallet.withdraw(withdrawal_amount) {
+        Ok(_) => assert_eq!(&wallet.balance, &Bitcoin(15)),
+        Err(err) => println!("Error: {:?} have {}", err, &wallet.balance),
+    }
+    println!("Finished with {}", &wallet.balance);
 }
 
 #[cfg(test)]
@@ -81,7 +105,7 @@ mod tests {
     #[test]
     fn test_wallet_withdrawal_insufficient_funds() {
         let mut wallet = wallet(20);
-        assert_eq!(wallet.withdraw(Bitcoin(25)), Err("Insufficient funds!"));
+        assert_eq!(wallet.withdraw(Bitcoin(25)), Err(InsufficientFundsError));
         assert_balance(wallet, Bitcoin(20));
     }
 }
