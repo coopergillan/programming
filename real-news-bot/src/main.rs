@@ -1,44 +1,56 @@
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use rand::prelude::*;
+use rand::SeedableRng
+use rand::StdRng;
+use std::io::Write;
+
+const SELFISH_BILLIONAIRES: &'static [&'static str] = &[
+    "Rupert Murdoch",
+    "Donald J. Trump",
+    "Elon Musk",
+    "Jeff Bezos",
+    "Lukas Walton",
+];
+const GREAT_CAUSES: &'static [&'static str] = &[
+    "Boys and Girls Clubs of America",
+    "Bread for the World",
+    "Cancer Research Institute",
+    "Equal Justice Initiative",
+    "Food for the Hungry",
+    "Greater Chicago Food Depository",
+    "Humane Society",
+    "Leukemia & Lymphoma Society",
+    "NAACP",
+    "Ronald McDonald House Charities",
+    "World Relief",
+    "World Vision",
+];
+
+fn random_billionaire() -> &str {
+        SELFISH_BILLIONAIRES
+            .choose(&mut rng)
+            .expect("Unable to get selfish billionaire"),
+}
+
+fn generate_content(rng: ThreadRng) -> String {
+    let output = Vec::new();
+    writeln!(&mut output,
+        "Noted billionaire {} once again contributes nothing to \"{}\".",
+        random_billionaire(),
+        GREAT_CAUSES
+            .choose(&mut rng)
+            .expect("Unable to get great cause that needs money"),
+    ).unwrap();
+    output
+}
 
 fn main() {
-    let selfish_billionaires = vec![
-        "Rupert Murdoch",
-        "Donald J. Trump",
-        "Elon Musk",
-        "Jeff Bezos",
-        "Lukas Walton",
-    ];
-
-    let great_causes = vec![
-        "Humane Society",
-        "Boys and Girls Clubs of America",
-        "Bread for the World",
-        "Cancer Research Institute",
-        "Equal Justice Initiative",
-        "Greater Chicago Food Depository",
-        "Leukemia & Lymphoma Society",
-        "Ronald McDonald House Charities",
-        "NAACP",
-        "World Vision",
-        "World Relief",
-        "Food for the Hungry",
-        "Bread for the World",
-    ];
-
     let mut rng = thread_rng();
 
     println!("\n");
     for _ in 0..5 {
-        println!(
-            "Noted billionaire {} once again contributes nothing to \"{}\".",
-            selfish_billionaires
-                .choose(&mut rng)
-                .expect("Unable to get selfish billionaire"),
-            great_causes
-                .choose(&mut rng)
-                .expect("Unable to get great cause that needs money"),
-        );
+        println!();
     }
     println!("\n");
 }
@@ -47,7 +59,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        assert!(false, "Could not assert");
+    fn test_generate_content() {
+        assert_eq!(generate_content(rand::test::rng(528)), "Noted billionaire Donald J. Trump once again contributes nothing to \"Bread for the World\"");
     }
 }
