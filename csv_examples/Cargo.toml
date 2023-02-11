@@ -7,4 +7,8 @@ edition = "2021"
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
+fixed_width = "0.5"
+fixed_width_derive = "0.5"
 csv = "1.1"
+serde = { version = "1", features = ["derive"] }
+serde_derive = "1.0"
