@@ -47,4 +47,19 @@ mod tests {
         let want = vec![3, 9];
         assert_eq!(got, want);
     }
+
+    #[test]
+    fn test_sum_all_tails() {
+        let got = sum_all_tails(vec![vec![1, 2], vec![0, 9]]);
+        let want = vec![2, 9];
+        assert_eq!(got, want);
+    }
+
+    #[test]
+    fn test_sum_all_tails_empty() {
+        let got = sum_all_tails(vec![vec![], vec![3, 4, 5]]);
+        let want = vec![0, 9];
+
+        assert_eq!(got, want);
+    }
 }
