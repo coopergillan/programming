@@ -51,11 +51,32 @@ mod tests {
             linear_scan_closest_neighbor(vec![-1, 1, 56, 92], 6),
             Some(1)
         );
+        // Number line for points: -11, -5, 26, 92; target: 11
+        //
+        // -11   -5         11(T)        26         92
+        //  |-----|----------|-----------|----------|
+        //        |          |           |
+        //        |          |           +-- 26 (distance 15 from 11)
+        //        |          +-------------- 11 (target)
+        //        +------------------------ -5 (distance 16 from 11)
+        // +------------------------------- -11 (distance 22 from 11)
+        //
+        // 26 is closest to 11, so it is chosen.
         assert_eq!(
             linear_scan_closest_neighbor(vec![-11, -5, 26, 92], 11),
             Some(26)
         );
-        // Both of the last two are close enough, but the first one already meets the conditions
+        // Number line for points: 1, 5, 9; target: 7
+        //
+        // 1     5     7(T)    9
+        // |-----|-----|-------|
+        //       |     |       |
+        //       |     |       +-- 9 (distance 2 from 7)
+        //       |     +---------- 7 (target)
+        //       +---------------- 5 (distance 2 from 7)
+        // +---------------------- 1 (distance 6 from 7)
+        //
+        // Both 5 and 9 are equally close to 7, but 5 appears first in the list, so it is chosen.
         assert_eq!(linear_scan_closest_neighbor(vec![1, 5, 9], 7), Some(5));
     }
 }
