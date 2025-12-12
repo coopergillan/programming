@@ -49,9 +49,71 @@ impl PartialOrd for DetailedTask {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TaskWithDuration {
+    pub task_name: String,
+    pub duration_in_seconds: usize,
+    // Say whether or not there are downstream tasks
+    pub has_dependents: bool,
+}
+
+// Implement the trait so that tasks with the longest duration are prioritized first
+// Use whether or not there are dependents as a tiebreaker - that is, if two tasks
+// have the same duration, the one with downstream dependents should becompleted first
+impl Ord for TaskWithDuration {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Set the ordering by the duration in seconds
+        self.duration_in_seconds
+            .cmp(&other.duration_in_seconds)
+            .then_with(|| self.has_dependents.cmp(&other.has_dependents))
+    }
+}
+
+// `PartialOrd` needs to be implemented as well.
+impl PartialOrd for TaskWithDuration {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_heap_with_priority_by_duration() {
+        let mut heap: BinaryHeap<TaskWithDuration> = BinaryHeap::new();
+        assert_eq!(heap.peek(), None);
+
+        // Add some tasks with duration
+        heap.push(TaskWithDuration {
+            task_name: "Wash dishes".to_string(),
+            duration_in_seconds: 300,
+            has_dependents: false,
+        });
+        heap.push(TaskWithDuration {
+            task_name: "Dry clothes".to_string(),
+            duration_in_seconds: 3000,
+            has_dependents: false, // Actually, they need to be folded - maybe a DAG later
+        });
+        heap.push(TaskWithDuration {
+            task_name: "Clean bathroom".to_string(),
+            duration_in_seconds: 600,
+            has_dependents: false,
+        });
+        heap.push(TaskWithDuration {
+            task_name: "Wash clothes".to_string(),
+            duration_in_seconds: 3000,
+            has_dependents: true, // Clothes must be dried after
+        });
+
+        // Assert that the longest task should be completed first
+        assert_eq!(heap.pop().unwrap().task_name, "Wash clothes".to_string());
+        assert_eq!(heap.pop().unwrap().task_name, "Dry clothes".to_string());
+        assert_eq!(heap.pop().unwrap().task_name, "Clean bathroom".to_string());
+        assert_eq!(heap.pop().unwrap().task_name, "Wash dishes".to_string());
+        assert_eq!(heap.pop(), None);
+    }
 
     #[test]
     fn test_binary_heap_with_detailed_tasks() {
