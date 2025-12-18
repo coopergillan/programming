@@ -13,22 +13,22 @@
 //!
 //! Taken from Data Structures the Fun Way
 
-struct GridPoint {
-    x: f64,
-    y: f64,
-    next: GridPoint,
-}
-
-struct Grid {
-    num_x_bins: usize,
-    num_y_bins: usize,
-    x_start: f64,
-    x_end: f64,
-    x_bin_width: f64,
-    y_start: f64,
-    y_end: f64,
-    y_bin_width: f64,
-}
+// struct GridPoint {
+//     x: f64,
+//     y: f64,
+//     next: Box<GridPoint>,
+// }
+//
+// struct Grid {
+//     num_x_bins: usize,
+//     num_y_bins: usize,
+//     x_start: f64,
+//     x_end: f64,
+//     x_bin_width: f64,
+//     y_start: f64,
+//     y_end: f64,
+//     y_bin_width: f64,
+// }
 
 pub fn linear_scan_closest_neighbor(points: Vec<isize>, target: isize) -> Option<isize> {
     let number_of_elements = points.len();
