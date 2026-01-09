@@ -1,7 +1,7 @@
-mod dfs_and_bfs;
-mod dijkstras;
+// mod dfs_and_bfs;
+// mod dijkstras;
 mod grids;
-mod priority;
+// mod priority;
 
 fn main() {
     println!("Hi")
