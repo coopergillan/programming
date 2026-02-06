@@ -40,7 +40,7 @@ struct Grid {
     y_start: f64,
     y_end: f64,
     y_bin_width: f64,
-    bins: Vec<Vec<Box<GridPoint>>>,
+    bins: Option<Vec<Vec<Option<Box<GridPoint>>>>>,
 }
 
 impl Grid {
@@ -52,19 +52,25 @@ impl Grid {
 
         // Check that point is within the grid.
         if xbin < 0 || xbin >= self.num_x_bins {
-            return false
+            return false;
         }
         if ybin < 0 || ybin >= self.num_y_bins {
-            return false
+            return false;
         }
 
         // Add the point to the front of the list as a new Boxed GridPoint
-        if let Some(row) = self.bins.get_mut(xbin) {
-            if let Some(val) = row.get_mut(ybin) {
-                let next_point = val.clone();
-                *val = Box::new(GridPoint::new(x, y));
-                val.next = Some(next_point);
-            }
+        if self.bins.is_none() {
+            self.bins = Some(vec![vec![None; self.num_y_bins]; self.num_x_bins]);
+        }
+        // If there is already a value, get a mutable reference and put the next
+        // point at the front of the list
+        if let Some(bins) = &mut self.bins {
+            let next_point = bins[xbin][ybin].take();
+            bins[xbin][ybin] = Some(Box::new(GridPoint {
+                x,
+                y,
+                next: next_point,
+            }));
         }
 
         true
@@ -111,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_grid_basics() {
-        let bins: Vec<Vec<Box<GridPoint>>> = Vec::new();
+        let bins: Vec<Vec<Option<Box<GridPoint>>>> = Vec::new();
         let grid = Grid {
             num_x_bins: 2,
             num_y_bins: 2,
@@ -121,9 +127,9 @@ mod tests {
             y_start: 0.0,
             y_end: 2.0,
             y_bin_width: 1.0,
-            bins: bins,
+            bins: Some(bins),
         };
-        assert_eq!(grid.bins.len(), 0);
+        assert_eq!(grid.bins.expect("Could not get bins").len(), 0);
     }
 
     #[test]
@@ -137,11 +143,14 @@ mod tests {
             y_start: 0.0,
             y_end: 2.0,
             y_bin_width: 1.0,
-            bins: vec![vec![]],
+            bins: None,
         };
         grid.insert(0.5, 0.75);
 
-        assert_eq!(grid.bins[0][0], Box::new(GridPoint::new(0.5, 0.75)));
+        assert_eq!(
+            grid.bins.expect("Couldn't get bins")[0][0],
+            Some(Box::new(GridPoint::new(0.5, 0.75)))
+        );
     }
 
     #[test]
