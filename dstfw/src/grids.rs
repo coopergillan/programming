@@ -51,27 +51,25 @@ impl Grid {
         dbg!(&ybin);
 
         // Check that point is within the grid.
-        if xbin < 0 || xbin >= self.num_x_bins {
-            return false;
-        }
-        if ybin < 0 || ybin >= self.num_y_bins {
+        if xbin >= self.num_x_bins || ybin >= self.num_y_bins {
             return false;
         }
 
-        // Add the point to the front of the list as a new Boxed GridPoint
+        // Check if there are no bins yet - if not, instantiate them as a matrix
+        // of Option<Box<GridPoint>> values with a size based on the specified
+        // number of x and y bins.
         if self.bins.is_none() {
             self.bins = Some(vec![vec![None; self.num_y_bins]; self.num_x_bins]);
         }
-        // If there is already a value, get a mutable reference and put the next
-        // point at the front of the list
-        if let Some(bins) = &mut self.bins {
-            let next_point = bins[xbin][ybin].take();
-            bins[xbin][ybin] = Some(Box::new(GridPoint {
-                x,
-                y,
-                next: next_point,
-            }));
-        }
+        // Pull out the current value even if it's the None that was just instantiated
+        // Then put the new value in that spot and link it to the value from before
+        let bins = self.bins.as_mut().unwrap();
+        let next_point = bins[xbin][ybin].take();
+        bins[xbin][ybin] = Some(Box::new(GridPoint {
+            x,
+            y,
+            next: next_point,
+        }));
 
         true
     }
@@ -115,9 +113,8 @@ mod tests {
         assert_eq!(checked_next, Box::new(GridPoint::new(0.5, 1.5)));
     }
 
-    #[test]
-    fn test_grid_basics() {
-        let grid = Grid {
+    fn basic_grid() -> Grid {
+        Grid {
             num_x_bins: 2,
             num_y_bins: 2,
             x_start: 0.0,
@@ -127,25 +124,35 @@ mod tests {
             y_end: 2.0,
             y_bin_width: 1.0,
             bins: None,
-        };
+        }
+    }
+
+    #[test]
+    fn test_grid_basics() {
+        let mut grid = basic_grid();
+
+        // Confirm there are no bins at all yet
+        assert!(grid.bins.is_none());
+
+        // Confirm that value cannot be inserted above the max value of bin times width
+        assert!(!grid.insert(3.14, 2.78));
         assert!(grid.bins.is_none());
     }
 
     #[test]
-    fn test_single_grid_insert() {
-        let mut grid = Grid {
-            num_x_bins: 2,
-            num_y_bins: 2,
-            x_start: 0.0,
-            x_end: 2.0,
-            x_bin_width: 1.0,
-            y_start: 0.0,
-            y_end: 2.0,
-            y_bin_width: 1.0,
-            bins: None,
-        };
-        grid.insert(0.5, 0.75);
+    #[ignore = "Need to figure out negative numbers if this will work"]
+    fn test_no_negative_bins() {
+        let mut grid = basic_grid();
+        // Confirm that negative numbers cannot be inserted
+        assert!(!grid.insert(-0.5, 1.0));
+    }
 
+    #[test]
+    fn test_single_grid_insert() {
+        let mut grid = basic_grid();
+
+        // Insert a value and confirm that it was inserted correctly
+        assert!(grid.insert(0.5, 0.75));
         assert_eq!(
             grid.bins.expect("Couldn't get bins")[0][0],
             Some(Box::new(GridPoint::new(0.5, 0.75)))
@@ -154,17 +161,7 @@ mod tests {
 
     #[test]
     fn test_complex_grid_insert() {
-        let mut grid = Grid {
-            num_x_bins: 2,
-            num_y_bins: 2,
-            x_start: 0.0,
-            x_end: 2.0,
-            x_bin_width: 1.0,
-            y_start: 0.0,
-            y_end: 2.0,
-            y_bin_width: 1.0,
-            bins: None,
-        };
+        let mut grid = basic_grid();
         assert!(grid.bins.is_none());
 
         // In the top-left-most grid: 0, 0
