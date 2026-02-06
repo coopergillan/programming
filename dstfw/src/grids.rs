@@ -30,6 +30,10 @@ impl GridPoint {
     }
 }
 
+fn approx_equal(x1: f64, y1: f64, x2: f64, y2: f64) -> bool {
+    (x1 - x2).abs() < 0.005 && (y1 - y2).abs() < 0.005
+}
+
 #[derive(Debug, PartialEq)]
 struct Grid {
     num_x_bins: usize,
@@ -47,8 +51,6 @@ impl Grid {
     fn insert(&mut self, x: f64, y: f64) -> bool {
         let xbin = ((x - self.x_start) / self.x_bin_width).floor() as usize;
         let ybin = ((y - self.y_start) / self.y_bin_width).floor() as usize;
-        dbg!(&xbin);
-        dbg!(&ybin);
 
         // Check that point is within the grid.
         if xbin >= self.num_x_bins || ybin >= self.num_y_bins {
@@ -72,6 +74,44 @@ impl Grid {
         }));
 
         true
+    }
+
+    fn delete(&mut self, x: f64, y: f64) -> bool {
+        let xbin = ((x - self.x_start) / self.x_bin_width).floor() as usize;
+        let ybin = ((y - self.y_start) / self.y_bin_width).floor() as usize;
+
+        // Check that the point is in the grid
+        if xbin >= self.num_x_bins {
+            return false;
+        }
+        if ybin >= self.num_y_bins {
+            return false;
+        }
+
+        // Check if the bin is empty and forget about deleting
+        if self.bins.as_ref().is_none() {
+            return false;
+        }
+
+        // Find the first match and remove it
+        let bins = self.bins.as_mut().unwrap();
+        let mut previous = &mut bins[xbin][ybin];
+
+        loop {
+            let Some(mut current) = previous.take() else {
+                break;
+            };
+            if approx_equal(x, y, current.x, current.y) {
+                // Remove the node by linking to its next
+                *previous = current.next.take();
+                return true;
+            } else {
+                // Move to the next node
+                *previous = Some(current);
+                previous = &mut previous.as_mut().unwrap().next;
+            }
+        }
+        false
     }
 }
 
@@ -101,6 +141,15 @@ pub fn linear_scan_closest_neighbor(points: Vec<isize>, target: isize) -> Option
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_approx_equal() {
+        assert!(approx_equal(0.501, 2.2, 0.502, 2.2001));
+        assert!(!approx_equal(0.501, 2.2, 0.507, 2.2));
+        assert!(!approx_equal(0.5001, 2.2, 0.5002, 3.2001));
+        assert!(!approx_equal(2.5001, 2.2, 0.5002, 2.2001));
+        assert!(!approx_equal(2.5001, 2.2, 0.5002, 2.2001));
+    }
 
     #[test]
     fn test_gridpoint_basics() {
@@ -209,6 +258,20 @@ mod tests {
             grid.bins.as_ref().unwrap()[0][1].as_ref(),
             Some(Box::new(GridPoint::new(0.5, 1.9))).as_ref()
         );
+    }
+
+    #[test]
+    fn test_simple_grid_delete() {
+        let mut grid = basic_grid();
+
+        // Insert a value and confirm that it was inserted correctly
+        assert!(grid.insert(0.5, 0.75));
+        assert_eq!(
+            grid.bins.as_ref().unwrap()[0][0],
+            Some(Box::new(GridPoint::new(0.5, 0.75)))
+        );
+        assert!(grid.delete(0.5, 0.75));
+        assert_eq!(grid.bins, Some(vec![vec![None, None], vec![None, None]])); //.is_none(), "grid.bins is not none");
     }
 
     #[test]
