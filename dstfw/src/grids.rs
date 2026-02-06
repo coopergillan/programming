@@ -117,7 +117,6 @@ mod tests {
 
     #[test]
     fn test_grid_basics() {
-        let bins: Vec<Vec<Option<Box<GridPoint>>>> = Vec::new();
         let grid = Grid {
             num_x_bins: 2,
             num_y_bins: 2,
@@ -127,13 +126,13 @@ mod tests {
             y_start: 0.0,
             y_end: 2.0,
             y_bin_width: 1.0,
-            bins: Some(bins),
+            bins: None,
         };
-        assert_eq!(grid.bins.expect("Could not get bins").len(), 0);
+        assert!(grid.bins.is_none());
     }
 
     #[test]
-    fn test_grid_insert() {
+    fn test_single_grid_insert() {
         let mut grid = Grid {
             num_x_bins: 2,
             num_y_bins: 2,
@@ -154,7 +153,68 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
+    fn test_complex_grid_insert() {
+        let mut grid = Grid {
+            num_x_bins: 2,
+            num_y_bins: 2,
+            x_start: 0.0,
+            x_end: 2.0,
+            x_bin_width: 1.0,
+            y_start: 0.0,
+            y_end: 2.0,
+            y_bin_width: 1.0,
+            bins: None,
+        };
+        assert!(grid.bins.is_none());
+
+        // In the top-left-most grid: 0, 0
+        grid.insert(0.5, 0.75);
+        grid.insert(0.25, 0.55);
+        grid.insert(0.15, 0.95);
+
+        // Check that the latest one is put first
+        assert_eq!(
+            grid.bins.as_ref().unwrap()[0][0].as_ref(),
+            Some(Box::new(GridPoint {
+                x: 0.15,
+                y: 0.95,
+                next: Some(Box::new(GridPoint {
+                    x: 0.25,
+                    y: 0.55,
+                    next: Some(Box::new(GridPoint::new(0.5, 0.75)))
+                }))
+            }))
+            .as_ref(),
+        );
+        // Confirm other bins are still empty
+        assert!(grid.bins.as_ref().unwrap()[1][0].is_none());
+        assert!(grid.bins.as_ref().unwrap()[1][1].is_none());
+        assert!(grid.bins.as_ref().unwrap()[0][1].is_none());
+
+        // Add to some other bins
+        // Bin 1, 0
+        grid.insert(1.2, 0.1);
+        assert_eq!(
+            grid.bins.as_ref().unwrap()[1][0].as_ref(),
+            Some(Box::new(GridPoint::new(1.2, 0.1))).as_ref()
+        );
+
+        // Bin 1, 1
+        grid.insert(1.5, 1.14);
+        assert_eq!(
+            grid.bins.as_ref().unwrap()[1][1].as_ref(),
+            Some(Box::new(GridPoint::new(1.5, 1.14))).as_ref()
+        );
+
+        // Bin 0, 1
+        grid.insert(0.5, 1.9);
+        assert_eq!(
+            grid.bins.as_ref().unwrap()[0][1].as_ref(),
+            Some(Box::new(GridPoint::new(0.5, 1.9))).as_ref()
+        );
+    }
+
+    #[test]
     fn test_linear_scan() {
         // Check for a target of 6
         // -1    1    6(T)         56         92
