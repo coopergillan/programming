@@ -1,7 +1,3 @@
-// use std::collections::HashMap;
-
-// For later
-// use std::collections::{HashMap, HashSet};
 use std::collections::{HashMap, VecDeque};
 
 fn depth_first_search<'a>(
