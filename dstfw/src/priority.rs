@@ -12,6 +12,15 @@ pub enum Application {
     TradingPlatformConfig,
 }
 
+// Add an enum defining tasks that would be completed in a messaging app
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MessagingTasks {
+    DirectMessage,
+    Mention,
+    TeamChannel,
+    AllOtherChannels,
+}
+
 // Lay out different tasks that could arise during the workday,
 // some of which are specific to one of the above applications
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -22,10 +31,7 @@ pub enum TaskCategory {
     ProjectStatusUpdate,
     CodeReview(Application),
     CodeReviewTopPriority(Application),
-    DirectMessage,
-    MessagingMention,
-    MessagingTeamChannel,
-    Messages,
+    MessagingApp(MessagingTasks),
 }
 
 impl Application {
@@ -58,12 +64,12 @@ impl TaskCategory {
     //   3. Top-app high-priority code review (app_rank==1):     3
     //   4. Non-top deploy authorizations (app_rank>1):          3 + (app_rank-1)
     //   5. Non-top deploy approvals (app_rank>1):               3 + (app_count-1) + (app_rank-1)
-    //   6. Direct messages:                                      3 + 2*(app_count-1) + 1
-    //   7. Messaging mentions:                                   3 + 2*(app_count-1) + 2
+    //   6. MessagingApp(DirectMessage):                          3 + 2*(app_count-1) + 1
+    //   7. MessagingApp(Mention):                               3 + 2*(app_count-1) + 2
     //   8. Non-top high-priority code reviews (app_rank>1):     3 + 2*(app_count-1) + 2 + (app_rank-1)
-    //   9. Messaging team channel:                              3*(app_count-1) + 6
+    //   9. MessagingApp(TeamChannel):                           3*(app_count-1) + 6
     //  10. Regular code reviews (all apps):                     3*(app_count-1) + 6 + app_rank
-    //  11. All other messages:                                  3*(app_count-1) + 6 + app_count + 1
+    //  11. MessagingApp(AllOtherChannels):                      3*(app_count-1) + 6 + app_count + 1
     //  12. Project status updates:                              3*(app_count-1) + 6 + app_count + 2
     //  13. Email:                                               3*(app_count-1) + 6 + app_count + 3
     fn priority(&self) -> usize {
@@ -89,11 +95,13 @@ impl TaskCategory {
                     3 + 2 * (app_count - 1) + 2 + (app_rank - 1)
                 }
             }
-            TaskCategory::DirectMessage => 3 + 2 * (app_count - 1) + 1,
-            TaskCategory::MessagingMention => 3 + 2 * (app_count - 1) + 2,
-            TaskCategory::MessagingTeamChannel => 3 * (app_count - 1) + 6,
+            TaskCategory::MessagingApp(msg) => match msg {
+                MessagingTasks::DirectMessage => 3 + 2 * (app_count - 1) + 1,
+                MessagingTasks::Mention => 3 + 2 * (app_count - 1) + 2,
+                MessagingTasks::TeamChannel => 3 * (app_count - 1) + 6,
+                MessagingTasks::AllOtherChannels => 3 * (app_count - 1) + 6 + app_count + 1,
+            },
             TaskCategory::CodeReview(app) => 3 * (app_count - 1) + 6 + app.priority(),
-            TaskCategory::Messages => 3 * (app_count - 1) + 6 + app_count + 1,
             TaskCategory::ProjectStatusUpdate => 3 * (app_count - 1) + 6 + app_count + 2,
             TaskCategory::Email => 3 * (app_count - 1) + 6 + app_count + 3,
         }
@@ -330,16 +338,22 @@ mod tests {
         // Add some values that come in
         // Email, ProjectStatusUpdate, and messages catch-up are nearly always available
         heap.push(TaskCategory::Email);
-        heap.push(TaskCategory::Messages);
+        heap.push(TaskCategory::MessagingApp(MessagingTasks::AllOtherChannels));
         heap.push(TaskCategory::ProjectStatusUpdate);
 
         // Started checking messages before anything else happened
-        assert_eq!(heap.pop(), Some(TaskCategory::Messages));
+        assert_eq!(
+            heap.pop(),
+            Some(TaskCategory::MessagingApp(MessagingTasks::AllOtherChannels))
+        );
 
         // Received a DM while going through messages
-        heap.push(TaskCategory::DirectMessage);
+        heap.push(TaskCategory::MessagingApp(MessagingTasks::DirectMessage));
         // Confirm that rises to the top (for now)
-        assert_eq!(heap.peek(), Some(&TaskCategory::DirectMessage));
+        assert_eq!(
+            heap.peek(),
+            Some(&TaskCategory::MessagingApp(MessagingTasks::DirectMessage))
+        );
 
         // Then a whole bunch of stuff happens while finishing catching up on messages
         // Get asked to authorize a TradingPlatform deploy before checking the DM that came through
@@ -375,7 +389,7 @@ mod tests {
 
         // Before even able to start that approval some other things happen
         // Someone posts in the team channel
-        heap.push(TaskCategory::MessagingTeamChannel);
+        heap.push(TaskCategory::MessagingApp(MessagingTasks::TeamChannel));
         // Compliance deploy approval still up next
         assert_eq!(
             heap.peek(),
@@ -385,7 +399,7 @@ mod tests {
         // Some regular ol' TradeFeed code is ready to be reviewed
         heap.push(TaskCategory::CodeReview(Application::TradeFeed));
         // Some other messages are received
-        heap.push(TaskCategory::Messages);
+        heap.push(TaskCategory::MessagingApp(MessagingTasks::AllOtherChannels));
         // A Ledger deploy authorization is requested
         heap.push(TaskCategory::DeployAuthorization(Application::Ledger));
         // Some high-priority TradingPlatform code needs to be reviewed
@@ -395,7 +409,7 @@ mod tests {
         // Some regular ol' Compliance code is ready for review
         heap.push(TaskCategory::CodeReview(Application::Compliance));
         // Someone mentions you in messaging app
-        heap.push(TaskCategory::MessagingMention);
+        heap.push(TaskCategory::MessagingApp(MessagingTasks::Mention));
 
         // Wow, okay, so there are 11 tasks in the queue
         assert_eq!(heap.len(), 11);
@@ -419,11 +433,20 @@ mod tests {
             Some(TaskCategory::DeployApproval(Application::Compliance))
         );
         // Check direct messages (DMs)
-        assert_eq!(heap.pop(), Some(TaskCategory::DirectMessage));
+        assert_eq!(
+            heap.pop(),
+            Some(TaskCategory::MessagingApp(MessagingTasks::DirectMessage))
+        );
         // Check mentions in messaging app
-        assert_eq!(heap.pop(), Some(TaskCategory::MessagingMention));
+        assert_eq!(
+            heap.pop(),
+            Some(TaskCategory::MessagingApp(MessagingTasks::Mention))
+        );
         // Check team channel
-        assert_eq!(heap.pop(), Some(TaskCategory::MessagingTeamChannel));
+        assert_eq!(
+            heap.pop(),
+            Some(TaskCategory::MessagingApp(MessagingTasks::TeamChannel))
+        );
         // Do TradeFeed code review
         assert_eq!(
             heap.pop(),
@@ -435,7 +458,10 @@ mod tests {
             Some(TaskCategory::CodeReview(Application::Compliance))
         );
         // Catch up on all other messages in messaging app
-        assert_eq!(heap.pop(), Some(TaskCategory::Messages));
+        assert_eq!(
+            heap.pop(),
+            Some(TaskCategory::MessagingApp(MessagingTasks::AllOtherChannels))
+        );
         // Go and update the project status board
         assert_eq!(heap.pop(), Some(TaskCategory::ProjectStatusUpdate));
 
@@ -444,8 +470,14 @@ mod tests {
         heap.push(TaskCategory::CodeReview(Application::TradeFeedConfig));
 
         // Go wrap all the code review
-        assert_eq!(heap.pop(), Some(TaskCategory::CodeReview(Application::TradeFeedConfig)));
-        assert_eq!(heap.pop(), Some(TaskCategory::CodeReview(Application::TradingPlatformConfig)));
+        assert_eq!(
+            heap.pop(),
+            Some(TaskCategory::CodeReview(Application::TradeFeedConfig))
+        );
+        assert_eq!(
+            heap.pop(),
+            Some(TaskCategory::CodeReview(Application::TradingPlatformConfig))
+        );
 
         // Finally go read those emails after finishing code review in the right order
         assert_eq!(heap.pop(), Some(TaskCategory::Email));
