@@ -1,4 +1,6 @@
 use std::collections::{HashMap, VecDeque};
+use std::thread::sleep;
+use std::time::Duration;
 
 fn depth_first_search<'a>(
     // Accepts a graph that is a HashMap along with a starting node and a Vector for visited nodes
@@ -51,7 +53,7 @@ fn depth_first_search_with_vecdeque<'a>(
     visited.to_vec()
 }
 
-fn breadth_first_search<'a>(
+pub fn breadth_first_search<'a>(
     graph: &HashMap<&str, Vec<&'static str>>,
     start: &'a str,
     visited: &mut Vec<&'a str>,
@@ -61,16 +63,54 @@ fn breadth_first_search<'a>(
     queue.push_back(start);
 
     while let Some(node) = queue.pop_front() {
+        println!("Here we go with node {:?}", &node);
+
         if !visited.contains(&node) {
-            println!("Now visiting node: {:?}", node);
+            println!("Now visiting node: {:?}", &node);
+            if !cfg!(test) {
+                sleep(Duration::from_secs(3));
+            }
+
             visited.push(node);
+            println!("So far these are the visisted nodes: {:?}", &visited);
+
             if let Some(neighbors) = graph.get(node) {
+                println!("These are node {:?}'s neighbors: {:?}", &node, &neighbors);
+
                 for neighbor in neighbors {
                     if !visited.contains(neighbor) {
+                        println!(
+                            "Hadn't yet visited neighbor {:?}, adding to the queue",
+                            &neighbor
+                        );
+                        if !cfg!(test) {
+                            sleep(Duration::from_secs(1));
+                        }
                         queue.push_back(neighbor);
+                        println!("After adding new neighbor, queue is now: {:?}", &queue);
+
+                        if !cfg!(test) {
+                            sleep(Duration::from_secs(7));
+                        }
+                    } else {
+                        println!("Already visisted neighbor {:?}", &neighbor);
                     }
                 }
+            } else {
+                println!(
+                    "node {:?} does not have any neighbors to add - moving on",
+                    &node
+                );
             }
+        } else {
+            println!("Already visited node {:?}", &node);
+        }
+        println!(
+            "Finished checking out node {:?}. Queue is now: {:?}",
+            &node, &queue
+        );
+        if !cfg!(test) {
+            sleep(Duration::from_secs(2));
         }
     }
 
@@ -155,7 +195,7 @@ mod tests {
     }
 
     #[test]
-    fn run_small_hfs() {
+    fn run_small_bfs() {
         let graph = graph_setup();
         let mut visited: Vec<&'static str> = Vec::new();
         dbg!(&graph);
@@ -165,13 +205,29 @@ mod tests {
     }
 
     #[test]
-    fn run_full_hfs() {
+    fn run_full_bfs() {
         let graph = graph_setup();
+        // This represents an undirected graph of simple nodes and edges:
+        //
+        // +---+    +---+     +---+     +---+     +---+
+        // | H |<---| A |---->| B |---->| C |---->| D |
+        // +---+    +---+     +---+     +---+     +---+
+        //            |                   |
+        //            v                   v
+        //          +---+     +---+     +---+
+        //          | F |---->| G |     | E |
+        //          +---+     +---+     +---+
+        //            |         ^
+        //            v         |
+        //          +---+       |
+        //          | I |<------+
+        //          +---+
+        //
         let mut visited: Vec<&'static str> = Vec::new();
         dbg!(&graph);
 
         breadth_first_search(&graph, "A", &mut visited);
-        assert_eq!(visited, vec!["A", "B", "F", "H", "C", "G", "I", "E", "D"]);
+        assert_eq!(visited, vec!["A", "B", "F", "H", "C", "G", "I", "D", "E"]);
     }
 
     #[test]
